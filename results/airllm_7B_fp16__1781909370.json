@@ -1,0 +1,25 @@
+{
+  "scenario": "airllm",
+  "size": "7B",
+  "quant": "fp16",
+  "prompt": "Explain in three short sentences how virtual memory paging works in modern operating systems.",
+  "max_new_tokens": 48,
+  "ok": true,
+  "load_ms": 556.6819170415401,
+  "peak_rss_mb": 2200.421875,
+  "output": "\nVirtual memory paging works by dividing the physical memory into fixed-size blocks called pages, and mapping each page to a frame in physical memory. When a process needs to access a page that is not in physical memory, the operating",
+  "wall_ms": 312050.31529200077,
+  "timing": {
+    "ttft_ms": 7422.928667038679,
+    "itl_mean_ms": 6480.255708340001,
+    "itl_p50_ms": 6447.594291001558,
+    "throughput_tps": 0.1575981939154518,
+    "n_tokens": 48
+  },
+  "tokens": {
+    "input_tokens": 18,
+    "output_tokens": 50,
+    "total_tokens": 68
+  },
+  "repeat": 0
+}

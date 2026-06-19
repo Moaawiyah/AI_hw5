@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Models / cache (large, do not commit)
+models_cache/
+*.safetensors
+*.bin
+*.gguf
+*.pt
+*.pth
+
+# Results are kept (small JSON) but raw dumps ignored
+results/raw/*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

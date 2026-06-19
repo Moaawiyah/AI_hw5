@@ -1,0 +1,16 @@
+{
+  "scenario": "ollama",
+  "size": "14b",
+  "quant": "q8",
+  "model": "qwen2.5:14b-instruct-q8_0",
+  "num_ctx": 2048,
+  "prompt": "Explain in three short sentences how virtual memory paging works in modern operating systems.",
+  "max_new_tokens": 48,
+  "ok": false,
+  "error": "Memory-bound swap thrash: q8_0 GGUF loads to ~16GB (full unified RAM) with 2048 ctx, leaving ~0 free pages; generation did not complete within 12min. Same memory bottleneck as the FP16 baseline, just deferred by quantization.",
+  "bottleneck": "memory_bound_swap",
+  "model_disk_gb": 15.0,
+  "loaded_size_gb": 16.0,
+  "wall_ms": 720000,
+  "repeat": 0
+}

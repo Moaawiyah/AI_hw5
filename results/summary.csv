@@ -1,0 +1,7 @@
+scenario,size,quant,ok,ttft_ms,itl_mean_ms,throughput_tps,peak_rss_mb
+airllm,13B,fp16,True,92941.4,11379.6,0.1,2429.4
+airllm,7B,fp16,True,7422.9,6480.3,0.2,2200.4
+baseline,13B,fp16,False,,,,
+ollama,14b,q2,True,2489.8,83.1,12.3,232.5
+ollama,14b,q4,True,8755.4,105.4,9.7,232.4
+ollama,14b,q8,False,,,,

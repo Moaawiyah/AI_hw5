@@ -1,0 +1,25 @@
+{
+  "scenario": "airllm",
+  "size": "13B",
+  "quant": "fp16",
+  "prompt": "Explain in three short sentences how virtual memory paging works in modern operating systems.",
+  "max_new_tokens": 48,
+  "ok": true,
+  "load_ms": 81172.00320801139,
+  "peak_rss_mb": 2429.421875,
+  "output": "\n\nVirtual memory paging is a technique used by modern operating systems to manage memory resources. It involves dividing the physical memory into fixed-size blocks called pages, and mapping each page to a frame in the virtual address space. When",
+  "wall_ms": 627845.1364579797,
+  "timing": {
+    "ttft_ms": 92941.39133301377,
+    "itl_mean_ms": 11379.60858244655,
+    "itl_p50_ms": 11323.134832978249,
+    "throughput_tps": 0.08974619718643366,
+    "n_tokens": 48
+  },
+  "tokens": {
+    "input_tokens": 18,
+    "output_tokens": 50,
+    "total_tokens": 68
+  },
+  "repeat": 0
+}

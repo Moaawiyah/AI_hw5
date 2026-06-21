@@ -6,7 +6,7 @@ from contextlib import contextmanager
 import psutil
 
 try:
-    import torch
+    import torch  # noqa: F401
     _HAS_TORCH = True
 except Exception:
     _HAS_TORCH = False

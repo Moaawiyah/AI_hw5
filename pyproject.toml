@@ -1,0 +1,27 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -q"
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/run_baseline.py",    # requires GPU + 28GB model
+    "src/run_airllm.py",      # requires AirLLM + 28GB model
+    "src/analyze_roofline.py",# matplotlib display / full data pipeline
+    "src/plot_economics.py",  # matplotlib display / full data pipeline
+]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+]

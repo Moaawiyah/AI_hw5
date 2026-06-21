@@ -64,7 +64,7 @@ def plot_path_comparison(df: pd.DataFrame):
     tput = [x[2] or 0 for x in rows]
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
-    bars = ax1.bar(labels, ram, color=["#d62728", "#2ca02c", "#1f77b4"])
+    ax1.bar(labels, ram, color=["#d62728", "#2ca02c", "#1f77b4"])
     ax1.set_ylabel("Peak RAM (MB)")
     ax1.set_title("Memory footprint (lower = better)")
     ax1.axhline(16 * 1024, color="grey", ls="--", lw=1)
@@ -88,10 +88,10 @@ def plot_quant_sweep(df: pd.DataFrame):
         axes, ["ttft_ms", "itl_mean_ms", "throughput_tps"],
         ["TTFT (ms)", "Mean decode ITL (ms)", "Throughput (tok/s)"],
         ["#9467bd", "#8c564b", "#17becf"]):
-        ok = o[o.ok == True]
+        ok = o[o.ok]
         ax.bar(ok.quant, ok[col], color=colr)
         # mark failures
-        for _, fr in o[o.ok == False].iterrows():
+        for _, fr in o[~o.ok].iterrows():
             ax.axvline(fr.order - 0.4 + 0.4, color="red", alpha=0.3)
         ax.set_title(title)
         ax.set_xlabel("GGUF quant level")

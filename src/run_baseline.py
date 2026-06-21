@@ -3,7 +3,6 @@
 Expected on a 16GB M3 with a 14B FP16 model: OOM or severe swap thrash.
 We capture that outcome as the documented baseline rather than crashing.
 """
-import time
 import threading
 
 import torch

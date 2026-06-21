@@ -5,10 +5,8 @@ and ITL/TPOT (Decode), mirroring the other runners. Default Ollama tags are Q4_K
 GGUF, so this also serves as a quantization comparison point (covers 'GGUF' keyword).
 """
 import json
-import time
 import urllib.request
 
-from src import config
 from src.metrics import peak_memory, now_ms, summarize_token_times
 from src.token_count import request_tokens
 
@@ -69,7 +67,7 @@ def run(size_key: str, prompt: str, max_new_tokens: int, tag: str = "q4",
     t0 = now_ms()
     try:
         # warm connectivity
-        urllib.request.urlopen(f"http://localhost:11434/api/tags", timeout=10).close()
+        urllib.request.urlopen("http://localhost:11434/api/tags", timeout=10).close()
         rec["load_ms"] = 0.0
     except Exception as e:
         rec["error"] = f"ollama unreachable: {type(e).__name__}: {e}"

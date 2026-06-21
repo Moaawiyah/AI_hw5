@@ -4,8 +4,6 @@ Reads the result Markdown files in results/, computes the headline comparison,
 quantization sweep, scaling, and economics tables, and writes a single
 aggregated Markdown report. Run after benchmarks: `python -m src.generate_report`.
 """
-from pathlib import Path
-
 import numpy as np
 
 from src import config, report, economics

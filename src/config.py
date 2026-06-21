@@ -22,7 +22,7 @@ MODELS = {
     "1.5B": {"id": "Qwen/Qwen2.5-1.5B-Instruct", "params_b": 1.5, "fp16_gb": 3.0,  "layers": 28},
     "14B":  {"id": "Qwen/Qwen2.5-14B-Instruct",  "params_b": 14.0,"fp16_gb": 28.0, "layers": 48},
 }
-SUBJECT = "14B"                          # AirLLM deep-dive subject (Qwen2.5-14B, GQA via AirLLMQWen2/CPU)
+SUBJECT = "14B"          # AirLLM deep-dive subject (Qwen2.5-14B, GQA via AirLLMQWen2/CPU)
 # Size sweep across Qwen2.5. 0.5B ships with tied embeddings; hf_utils.untie_embeddings
 # materialises lm_head.weight so AirLLM's splitter accepts it.
 SWEEP_SIZES = ["0.5B", "1.5B", "14B"]      # AirLLM size sweep (Qwen2.5, AirLLMQWen2 is Qwen-only)
@@ -30,8 +30,12 @@ OLLAMA_SIZES = ["14b"]                   # Ollama/GGUF comparison (Qwen2.5)
 QUANT_LEVELS = ["fp16", "q8", "q4", "q2"]
 QUANT_TO_COMPRESSION = {"fp16": None, "q8": "8bit", "q4": "4bit", "q2": "2bit"}
 
-PROMPT = "Explain in three short sentences how virtual memory paging works in modern operating systems."
+PROMPT = (
+    "Explain in three short sentences how virtual memory paging works"
+    " in modern operating systems."
+)
 MAX_NEW_TOKENS = 48
+MAX_SEQ_LEN = 2048        # KV-cache cap for AirLLM and Ollama (prevents swap on 16 GB)
 REPEATS = 2
 
 # --- Economics assumptions (state ALL explicitly in report; §5.5) ---
@@ -46,6 +50,10 @@ HW_LIFETIME_YEARS = 4
 ELECTRICITY_KWH_USD = 0.30
 HW_IDLE_W = 7
 HW_LOAD_W = 40
+HW_RAM_MB = 16 * 1024          # 16 GB unified memory (CPU + GPU share one pool)
+BASELINE_OOM_MB = 20_000.0     # observed MPS peak when baseline OOM'd (~20 GB)
+HW_DESCRIPTION = "Apple M3 MacBook Pro, 16 GB unified memory"
 MAINT_FRAC_PER_YEAR = 0.02  # 2% of CAPEX/year
 # Optional cloud GPU (3rd economics curve, §5.5 optional).
 CLOUD_GPU_USD_PER_HOUR = 2.49  # e.g. A10G spot
+OLLAMA_BASE_URL = "http://localhost:11434"

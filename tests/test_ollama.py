@@ -2,8 +2,6 @@
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.run_ollama import _model_name, _stream, run as ollama_run
 
 

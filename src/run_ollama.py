@@ -7,10 +7,12 @@ GGUF, so this also serves as a quantization comparison point (covers 'GGUF' keyw
 import json
 import urllib.request
 
+from src import config
 from src.metrics import peak_memory, now_ms, summarize_token_times
 from src.token_count import request_tokens
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = f"{config.OLLAMA_BASE_URL}/api/generate"
+OLLAMA_TAGS_URL = f"{config.OLLAMA_BASE_URL}/api/tags"
 
 # Map our quant label -> ollama tag suffix for qwen2.5 (GGUF quant levels).
 # The default `qwen2.5:14b` tag IS q4_K_M; other quants use `14b-instruct-<q>`.
@@ -33,7 +35,7 @@ def _model_name(size_key: str, quant: str = "q4") -> str:
     return f"qwen2.5:{base}-{suffix}"
 
 
-def _stream(model: str, prompt: str, max_new_tokens: int, num_ctx: int = 2048):
+def _stream(model: str, prompt: str, max_new_tokens: int, num_ctx: int = config.MAX_SEQ_LEN):
     """Yield (token_text) from the Ollama generate stream.
 
     num_ctx caps the KV cache. The default 32k context balloons a 14B model to
@@ -58,7 +60,7 @@ def _stream(model: str, prompt: str, max_new_tokens: int, num_ctx: int = 2048):
 
 
 def run(size_key: str, prompt: str, max_new_tokens: int, tag: str = "q4",
-        num_ctx: int = 2048) -> dict:
+        num_ctx: int = config.MAX_SEQ_LEN) -> dict:
     """Run via Ollama; return a result dict (incl. failures)."""
     model = _model_name(size_key, tag)
     rec = {"scenario": "ollama", "size": size_key, "quant": tag, "model": model,
@@ -67,7 +69,7 @@ def run(size_key: str, prompt: str, max_new_tokens: int, tag: str = "q4",
     t0 = now_ms()
     try:
         # warm connectivity
-        urllib.request.urlopen("http://localhost:11434/api/tags", timeout=10).close()
+        urllib.request.urlopen(OLLAMA_TAGS_URL, timeout=10).close()
         rec["load_ms"] = 0.0
     except Exception as e:
         rec["error"] = f"ollama unreachable: {type(e).__name__}: {e}"

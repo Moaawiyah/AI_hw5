@@ -1,4 +1,5 @@
 """Fixed prompts + scenario definitions for reproducible benchmarking."""
+from src import config
 
 # Primary benchmark prompt (identical across ALL runs for fair comparison, §5.4).
 PRIMARY_PROMPT = (
@@ -12,8 +13,8 @@ LONG_PROMPT = (
 )
 
 SCENARIOS = {
-    "short": {"prompt": PRIMARY_PROMPT, "max_new_tokens": 48},
-    "long":  {"prompt": LONG_PROMPT,    "max_new_tokens": 32},
+    "short": {"prompt": PRIMARY_PROMPT, "max_new_tokens": config.MAX_NEW_TOKENS},
+    "long":  {"prompt": LONG_PROMPT,    "max_new_tokens": config.MAX_NEW_TOKENS // 2},
 }
 
 # A simple rubric to score output quality across quantization levels (§5.4).
@@ -25,17 +26,12 @@ _PAGING_TERMS = ["pag", "virtual memory", "address space", "frame", "swap", "dis
 
 
 def score_output(output: str) -> dict:
-    """Heuristic quality score against QUALITY_RUBRIC for the paging prompt.
-
-    Returns a dict mapping each rubric dimension to True/False.
-    Designed for comparing quantization levels; not a substitute for human eval.
-    """
+    """Heuristic quality score against QUALITY_RUBRIC for the paging prompt."""
     low = output.lower()
     term_hits = sum(1 for t in _PAGING_TERMS if t in low)
     on_topic = term_hits >= 2
     coherent = len(output.split()) >= 10
     factually_correct = term_hits >= 3
-    # Complete = output ends with sentence-terminator (not truncated mid-word/sentence)
     stripped = output.strip()
     complete = bool(stripped) and stripped[-1] in ".!?"
     return {

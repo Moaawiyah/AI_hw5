@@ -50,14 +50,15 @@ def plot_path_comparison(df: pd.DataFrame):
         a = df[(df.scenario == "airllm") & (df["size"] == config.SUBJECT)]
         if len(a):
             r = a.iloc[0]
-            rows.append(("AirLLM\n(14B FP16)", r.peak_rss_mb, r.throughput_tps))
+            rows.append((f"AirLLM\n({config.SUBJECT} FP16)", r.peak_rss_mb, r.throughput_tps))
     o = df[df.scenario == "ollama"]
     if len(o):
         r = o[o.quant == "q4"]
         if len(r):
             r = r.iloc[0]
-            rows.append(("Ollama GGUF\n(Qwen2.5 14B Q4)", r.peak_rss_mb, r.throughput_tps))
-    rows.append(("Baseline\n(14B FP16)", 20000.0, 0.0))  # OOM at ~20GB, 0 tput
+            subj = config.SUBJECT
+            rows.append((f"Ollama GGUF\n(Qwen2.5 {subj} Q4)", r.peak_rss_mb, r.throughput_tps))
+    rows.append((f"Baseline\n({config.SUBJECT} FP16)", config.BASELINE_OOM_MB, 0.0))
 
     labels = [x[0] for x in rows]
     ram = [x[1] for x in rows]
@@ -67,8 +68,8 @@ def plot_path_comparison(df: pd.DataFrame):
     ax1.bar(labels, ram, color=["#d62728", "#2ca02c", "#1f77b4"])
     ax1.set_ylabel("Peak RAM (MB)")
     ax1.set_title("Memory footprint (lower = better)")
-    ax1.axhline(16 * 1024, color="grey", ls="--", lw=1)
-    ax1.text(0.1, 16 * 1024, " 16GB unified RAM", color="grey", fontsize=8)
+    ax1.axhline(config.HW_RAM_MB, color="grey", ls="--", lw=1)
+    ax1.text(0.1, config.HW_RAM_MB, " 16GB unified RAM", color="grey", fontsize=8)
     ax2.bar(labels, tput, color=["#d62728", "#2ca02c", "#1f77b4"])
     ax2.set_ylabel("Throughput (tok/s)")
     ax2.set_title("Decode throughput (higher = better)")
@@ -95,7 +96,8 @@ def plot_quant_sweep(df: pd.DataFrame):
             ax.axvline(fr.order - 0.4 + 0.4, color="red", alpha=0.3)
         ax.set_title(title)
         ax.set_xlabel("GGUF quant level")
-    fig.suptitle("Quantization sweep — Qwen2.5-14B via Ollama (q8 = OOM/swap, memory-bound)")
+    title = f"Quantization sweep — Qwen2.5-{config.SUBJECT} via Ollama (q8 = OOM/swap)"
+    fig.suptitle(title)
     _save(fig, "quant_sweep.png")
 
 

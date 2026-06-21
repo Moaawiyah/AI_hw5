@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
-import pytest
 
 from src.analyze_perf import load_results, plot_path_comparison, plot_quant_sweep, write_table
 from src.report import format_record_md

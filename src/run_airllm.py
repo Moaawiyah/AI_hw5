@@ -89,7 +89,7 @@ def _load(size_key: str, quant: str):
     shards_path.mkdir(parents=True, exist_ok=True)
     model = AirLLMQWen2(path, device="cpu", dtype=torch.float16,
                         compression=compression, hf_token=config.HF_TOKEN or None,
-                        layer_shards_saving_path=str(shards_path), max_seq_len=2048)
+                        layer_shards_saving_path=str(shards_path), max_seq_len=config.MAX_SEQ_LEN)
     tok = model.get_tokenizer(hf_token=config.HF_TOKEN or None)
     return tok, model
 

@@ -72,7 +72,7 @@ def generate() -> str:
     summary_body = "\n".join(report.format_summary_md(recs).splitlines()[2:])
     L = ["# EX05 — Technical Report (data-driven)", "",
          f"Subject model: **{config.MODELS[config.SUBJECT]['id']}**  ",
-         "Hardware: Apple M3 MacBook Pro, 16 GB unified memory.  ",
+         f"Hardware: {config.HW_DESCRIPTION}.  ",
          f"Generated from `{results_rel}/` Markdown result files.", "",
          "## 1. Headline comparison (§5.4)", "", _headline(recs), "",
          "## 2. Aggregated results", "", summary_body, "",

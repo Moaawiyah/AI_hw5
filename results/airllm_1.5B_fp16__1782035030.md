@@ -11,20 +11,20 @@
 | quant | fp16 |
 | model |  |
 | ok | true |
-| wall_ms | 125186.39 |
-| load_ms | 7662.61 |
-| peak_rss_mb | 1930.89 |
-| estimated_kwh | 1.39 |
+| wall_ms | 120569.93 |
+| load_ms | 1175.87 |
+| peak_rss_mb | 1700.45 |
+| estimated_kwh | 1.34 |
 | repeat | 0 |
 
 ## Timing
 
 | Field | Value |
 |---|---:|
-| ttft_ms | 10564.82 |
-| itl_mean_ms | 2386.87 |
-| itl_p50_ms | 2404.21 |
-| throughput_tps | 0.43 |
+| ttft_ms | 4269.70 |
+| itl_mean_ms | 2421.88 |
+| itl_p50_ms | 2472.42 |
+| throughput_tps | 0.42 |
 | n_tokens | 49 |
 
 ## Tokens

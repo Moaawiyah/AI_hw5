@@ -72,13 +72,13 @@ tokens, 48 max new tokens). The contrast across stages tells the whole story in 
 
 | Stage | Disk | Peak RAM | TTFT | ITL | Throughput | Est. kWh | Outcome |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Baseline FP16 | 28 GB | — | — | — | 0 tok/s | 0.52¹ | **OOM** |
-| AirLLM FP16 | 28 GB | 4 600 MB | 14.2 s | 12.9 s/tok | 0.08 tok/s | **7.01** | runs (slowly) |
-| GGUF Q2_K | 5.8 GB | 233 MB | 2.5 s | 83 ms | 12.3 tok/s | — | runs, fast |
-| GGUF Q4_K_M | 9.0 GB | 259 MB | 8.5 s | 103 ms | 9.9 tok/s | 0.15 | sweet spot |
-| GGUF Q8_0 | 15 GB | — | — | — | 0 tok/s | — | **swap-thrash** |
+| Baseline FP16 | 28 GB | — | — | — | 0 tok/s | 1.03¹ | **OOM** |
+| AirLLM FP16 | 28 GB | 4 711 MB | 13.4 s | 13.0 s/tok | 0.08 tok/s | **7.09** | runs (slowly) |
+| GGUF Q2_K | 5.8 GB | 259 MB | 5.9 s | 82 ms | 12.4 tok/s | 0.11 | runs, fast |
+| GGUF Q4_K_M | 9.0 GB | 76 MB | 8.8 s | 101 ms | 10.1 tok/s | 0.15 | sweet spot |
+| GGUF Q8_0 | 15 GB | 18 MB | 86.1 s | 17.1 s/tok | 0.06 tok/s | 9.90 | **swap-thrash** |
 
-> ¹ Baseline consumed 0.52 kWh during the 46.9 s load phase before crashing with OOM — no tokens were generated.
+> ¹ Baseline consumed 1.03 kWh during the 93 s load phase before crashing with OOM — no tokens were generated.
 
 ![Path comparison](figures/path_comparison.png)
 
@@ -111,15 +111,14 @@ coherent, on-topic answer:
 > pages. When a page is not in RAM, the OS swaps it with another page on…"
 
 The trade-off is speed:
-- **TTFT 14.2 s** (Prefill — one forward pass over the prompt to build the KV-cache).
-- **ITL 12.86 s/token** (Decode — every token re-streams all 48 layers from SSD).
-- **0.08 tok/s**, 10.5 minutes for 48 tokens.
+- **TTFT 13.4 s** (Prefill — one forward pass over the prompt to build the KV-cache).
+- **ITL 13.02 s/token** (Decode — every token re-streams all 48 layers from SSD).
+- **0.08 tok/s**, ~10.6 minutes for 48 tokens.
 
 **Why so slow:** every generated token forces AirLLM to re-load all 48 layer shards from
-the NVMe SSD (≈ 4.4 layers/s × 48 ≈ 11 s/token), use them once, then evict them. This is
-exactly **OS demand-paging** — layers are pages, the SSD is the backing store, `mmap` is
-the page-fault handler. The 12.86 s/token Decode proves the system is
-**memory-bandwidth-bound**, not compute-bound.
+the NVMe SSD, use them once, then evict them. This is exactly **OS demand-paging** — layers
+are pages, the SSD is the backing store, `mmap` is the page-fault handler. The 13.02 s/token
+Decode proves the system is **memory-bandwidth-bound**, not compute-bound.
 
 **Why it fit when Stage 1 didn't:** baseline holds all layers resident; AirLLM holds
 **one layer (~580 MB) at a time**. The other 47 live on disk until needed.
@@ -198,11 +197,11 @@ and TTFT scale with model size under the SSD-streaming memory technique.
 > We patch it in `src/hf_utils.py` via `untie_embeddings()`, which writes `lm_head.weight`
 > as a copy of `model.embed_tokens.weight` before sharding.
 
-| Size | Params | Layers | TTFT | ITL (ms/tok) | Throughput |
-|---|---:|---:|---:|---:|---:|
-| **0.5B** | 0.5 B | 24 | 6.2 s | 1 603 ms | 0.64 tok/s |
-| **1.5B** | 1.5 B | 28 | 10.6 s | 2 387 ms | 0.43 tok/s |
-| **14B**  | 14.0 B | 48 | 14.2 s | 12 856 ms | 0.08 tok/s |
+| Size | Params | Layers | TTFT | ITL (ms/tok) | Throughput | Est. kWh |
+|---|---:|---:|---:|---:|---:|---:|
+| **0.5B** | 0.5 B | 24 | 3.7 s | 1 955 ms | 0.52 tok/s | 1.08 |
+| **1.5B** | 1.5 B | 28 | 4.3 s | 2 422 ms | 0.42 tok/s | 1.34 |
+| **14B**  | 14.0 B | 48 | 13.4 s | 13 021 ms | 0.08 tok/s | 7.09 |
 
 ![Size scaling](figures/size_scaling.png)
 
@@ -215,13 +214,13 @@ transformer layers from the SSD before discarding them. So:
 ITL ∝ (number of layers) × (bytes per layer)
 ```
 
-- **0.5B → 1.5B** (24→28 layers, +17% layers): ITL rises 1 603 → 2 387 ms (+49%).
+- **0.5B → 1.5B** (24→28 layers, +17% layers): ITL rises 1 955 → 2 422 ms (+24%).
   The extra cost comes from both the additional layers *and* from each layer being wider
   (larger hidden dimension at 1.5B), so each SSD read is bigger.
 
-- **1.5B → 14B** (28→48 layers, +71% layers): ITL jumps 2 387 → 12 856 ms (+439%).
+- **1.5B → 14B** (28→48 layers, +71% layers): ITL jumps 2 422 → 13 021 ms (+438%).
   The 14B layers are ~10× wider than 1.5B layers, so the per-layer transfer dominates.
-  The combined effect (more layers × much bigger layers) drives an 8× ITL gap between
+  The combined effect (more layers × much bigger layers) drives a 5× ITL gap between
   the two largest sizes.
 
 **TTFT also grows with size** because the prompt must be forwarded through all layers once

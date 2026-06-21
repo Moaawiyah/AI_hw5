@@ -19,7 +19,7 @@ def _load(size_key: str):
     tok = AutoTokenizer.from_pretrained(path, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         path,
-        dtype=torch.float16,
+        torch_dtype=torch.float16,
         device_map="mps",
         trust_remote_code=True,
         low_cpu_mem_usage=True,

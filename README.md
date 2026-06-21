@@ -70,13 +70,15 @@ We ran the same Qwen2.5-14B model through five stages — a naive baseline, the 
 paging optimization, and three GGUF quantization levels — on the same prompt (16 input
 tokens, 48 max new tokens). The contrast across stages tells the whole story in one place.
 
-| Stage | Disk | Peak RAM | TTFT | ITL | Throughput | Outcome |
-|---|---:|---:|---:|---:|---:|---|
-| Baseline FP16 | 28 GB | — | — | — | 0 tok/s | **OOM** |
-| AirLLM FP16 | 28 GB | 4 600 MB | 14.2 s | 12.9 s/tok | 0.08 tok/s | runs (slowly) |
-| GGUF Q2_K | 5.8 GB | 233 MB | 2.5 s | 83 ms | 12.3 tok/s | runs, fast |
-| GGUF Q4_K_M | 9.0 GB | 259 MB | 8.5 s | 103 ms | 9.9 tok/s | sweet spot |
-| GGUF Q8_0 | 15 GB | — | — | — | 0 tok/s | **swap-thrash** |
+| Stage | Disk | Peak RAM | TTFT | ITL | Throughput | Est. kWh | Outcome |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Baseline FP16 | 28 GB | — | — | — | 0 tok/s | 0.52¹ | **OOM** |
+| AirLLM FP16 | 28 GB | 4 600 MB | 14.2 s | 12.9 s/tok | 0.08 tok/s | **7.01** | runs (slowly) |
+| GGUF Q2_K | 5.8 GB | 233 MB | 2.5 s | 83 ms | 12.3 tok/s | — | runs, fast |
+| GGUF Q4_K_M | 9.0 GB | 259 MB | 8.5 s | 103 ms | 9.9 tok/s | 0.15 | sweet spot |
+| GGUF Q8_0 | 15 GB | — | — | — | 0 tok/s | — | **swap-thrash** |
+
+> ¹ Baseline consumed 0.52 kWh during the 46.9 s load phase before crashing with OOM — no tokens were generated.
 
 ![Path comparison](figures/path_comparison.png)
 

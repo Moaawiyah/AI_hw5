@@ -123,6 +123,16 @@ Decode proves the system is **memory-bandwidth-bound**, not compute-bound.
 **Why it fit when Stage 1 didn't:** baseline holds all layers resident; AirLLM holds
 **one layer (~580 MB) at a time**. The other 47 live on disk until needed.
 
+#### AirLLM Qwen2.5-14B — running process
+
+The two screenshots below were captured from Activity Monitor while AirLLM was actively
+inferring on the 14B model:
+
+| SSD streaming (Disk tab) | Memory footprint (Memory tab) |
+|:---:|:---:|
+| ![Activity Monitor — Disk tab showing python3.12 streaming 339 GB from SSD](<figures/Screenshot 2026-06-21 at 13.01.30.png>) | ![Activity Monitor — python3.12 process detail: 4.44 GB real memory, 192% CPU](<figures/Screenshot 2026-06-21 at 13.03.30.png>) |
+| `python3.12` reading **339.56 GB** from NVMe at ~237 reads/s — every token triggers a full layer-streaming pass over the 28 GB model. | Only **4.44 GB real memory** used (vs 28 GB on disk), with **192% CPU** — confirms layer-by-layer demand-paging with no weight residency. |
+
 ![Quantization sweep](figures/quant_sweep.png)
 
 ### Stage 3 — GGUF Q2_K: smallest, fastest

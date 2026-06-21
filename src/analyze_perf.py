@@ -1,26 +1,21 @@
-"""Aggregate raw result JSONs and plot comparative performance charts (§5.4).
+"""Aggregate raw result Markdown files and plot comparative charts (§5.4).
 
 Figures:
   - path_comparison.png: baseline(OOM) vs AirLLM vs Ollama-q4 headline comparison.
   - quant_sweep.png:      GGUF quantization sweep (q2/q4/q8) TTFT/ITL/throughput.
-  - summary.csv:          aggregated numeric table.
+  - summary.md:           aggregated numeric table (Markdown).
 """
-import json
-import glob
-
 import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from src import config
+from src import config, report
 
 
 def load_results() -> pd.DataFrame:
     rows = []
-    for fp in glob.glob(str(config.RESULTS_DIR / "*.json")):
-        with open(fp) as f:
-            r = json.load(f)
+    for r in report.load_results_md(config.RESULTS_DIR):
         t = r.get("timing", {}) or {}
         rows.append({
             "scenario": r.get("scenario"),
@@ -33,6 +28,7 @@ def load_results() -> pd.DataFrame:
             "throughput_tps": t.get("throughput_tps"),
             "peak_rss_mb": r.get("peak_rss_mb"),
             "wall_ms": r.get("wall_ms"),
+            "estimated_kwh": r.get("estimated_kwh"),
             "error": (r.get("error") or "")[:40],
         })
     return pd.DataFrame(rows)
@@ -54,14 +50,14 @@ def plot_path_comparison(df: pd.DataFrame):
         a = df[(df.scenario == "airllm") & (df["size"] == config.SUBJECT)]
         if len(a):
             r = a.iloc[0]
-            rows.append(("AirLLM\n(13B FP16)", r.peak_rss_mb, r.throughput_tps))
+            rows.append(("AirLLM\n(14B FP16)", r.peak_rss_mb, r.throughput_tps))
     o = df[df.scenario == "ollama"]
     if len(o):
         r = o[o.quant == "q4"]
         if len(r):
             r = r.iloc[0]
             rows.append(("Ollama GGUF\n(Qwen2.5 14B Q4)", r.peak_rss_mb, r.throughput_tps))
-    rows.append(("Baseline\n(13B FP16)", 20000.0, 0.0))  # OOM at ~20GB, 0 tput
+    rows.append(("Baseline\n(14B FP16)", 20000.0, 0.0))  # OOM at ~20GB, 0 tput
 
     labels = [x[0] for x in rows]
     ram = [x[1] for x in rows]
@@ -80,7 +76,7 @@ def plot_path_comparison(df: pd.DataFrame):
 
 
 def plot_quant_sweep(df: pd.DataFrame):
-    o = df[(df.scenario == "ollma") | (df.scenario == "ollama")].copy()
+    o = df[df.scenario == "ollama"].copy()
     o = o[o["size"].str.lower() == "14b"]
     o["order"] = o.quant.map({"q2": 0, "q4": 1, "q8": 2})
     o = o.sort_values("order").dropna(subset=["order"])
@@ -107,9 +103,11 @@ def write_table(df: pd.DataFrame):
     agg = df.groupby(["scenario", "size", "quant"]).agg(
         ok=("ok", "first"), ttft_ms=("ttft_ms", "mean"),
         itl_mean_ms=("itl_mean_ms", "mean"), throughput_tps=("throughput_tps", "mean"),
-        peak_rss_mb=("peak_rss_mb", "mean")).round(1).reset_index()
-    agg.to_csv(config.RESULTS_DIR / "summary.csv", index=False)
-    print(f"[table] {config.RESULTS_DIR / 'summary.csv'}")
+        peak_rss_mb=("peak_rss_mb", "mean"), wall_ms=("wall_ms", "mean"),
+        estimated_kwh=("estimated_kwh", "mean")).round(4).reset_index()
+    rows = agg.to_dict(orient="records")
+    report.write_summary(rows, config.RESULTS_DIR / "summary.md")
+    print(f"[table] {config.RESULTS_DIR / 'summary.md'}")
     print(agg.to_string(index=False))
 
 

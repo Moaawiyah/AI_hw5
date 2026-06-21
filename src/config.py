@@ -13,21 +13,20 @@ for _d in (MODELS_CACHE, SHARDS_DIR, RESULTS_DIR, FIGURES_DIR):
 
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
-# Subject family = Llama-2 (MHA): the only architecture airllm 2.11.0's macOS MLX
-# backend supports. Modern GQA models (Llama-3.x, Qwen2.5) mis-reshape on the MLX
-# path. We use the -chat (instruct) variants for meaningful output-quality eval (§5.4).
-# Qwen2.5-14B is kept as the Ollama/GGUF second-path comparison. FP16 GB approx.
+# Subject family = Qwen2.5 (GQA). AirLLM 2.11.0's macOS MLX backend hardcodes
+# AirLLMLlamaMlx (MHA-only); we bypass it by importing AirLLMQWen2 directly and
+# running on CPU (see run_airllm.py). All paths (baseline, AirLLM, Ollama) use
+# Qwen2.5. FP16 GB approx.
 MODELS = {
-    # Llama-2 chat family (AirLLM subject + sweep) — MHA, airllm-compatible
-    "7B":  {"id": "NousResearch/Llama-2-7b-chat-hf",  "params_b": 7.0, "fp16_gb": 13.0, "layers": 32},
-    "13B": {"id": "NousResearch/Llama-2-13b-chat-hf", "params_b": 13.0,"fp16_gb": 26.0, "layers": 40},
-    # Qwen2.5 (Ollama/GGUF second path)
     "0.5B": {"id": "Qwen/Qwen2.5-0.5B-Instruct", "params_b": 0.5, "fp16_gb": 1.0,  "layers": 24},
-    "14B":  {"id": "Qwen/Qwen2.5-14B-Instruct",  "params_b": 14.0,"fp16_gb": 28.0, "layers": 40},
+    "1.5B": {"id": "Qwen/Qwen2.5-1.5B-Instruct", "params_b": 1.5, "fp16_gb": 3.0,  "layers": 28},
+    "14B":  {"id": "Qwen/Qwen2.5-14B-Instruct",  "params_b": 14.0,"fp16_gb": 28.0, "layers": 48},
 }
-SUBJECT = "13B"                    # AirLLM deep-dive subject (Llama-2-13B, MHA)
-SWEEP_SIZES = ["7B", "13B"]        # AirLLM size sweep (Llama-2)
-OLLAMA_SIZES = ["14b"]             # Ollama/GGUF comparison (Qwen2.5)
+SUBJECT = "14B"                          # AirLLM deep-dive subject (Qwen2.5-14B, GQA via AirLLMQWen2/CPU)
+# Size sweep across Qwen2.5. 0.5B ships with tied embeddings; hf_utils.untie_embeddings
+# materialises lm_head.weight so AirLLM's splitter accepts it.
+SWEEP_SIZES = ["0.5B", "1.5B", "14B"]      # AirLLM size sweep (Qwen2.5, AirLLMQWen2 is Qwen-only)
+OLLAMA_SIZES = ["14b"]                   # Ollama/GGUF comparison (Qwen2.5)
 QUANT_LEVELS = ["fp16", "q8", "q4", "q2"]
 QUANT_TO_COMPRESSION = {"fp16": None, "q8": "8bit", "q4": "4bit", "q2": "2bit"}
 

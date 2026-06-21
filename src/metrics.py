@@ -61,6 +61,11 @@ def now_ms() -> float:
     return time.perf_counter() * 1000.0
 
 
+def estimate_power_kwh(wall_ms: float, load_w: float) -> float:
+    """Energy consumed (kWh) = wattage × hours."""
+    return load_w * (wall_ms / 1000.0) / 3600.0
+
+
 def summarize_token_times(t_ms: list) -> dict:
     """Given cumulative per-token timestamps, return TTFT, mean ITL, throughput."""
     if not t_ms:

@@ -1,14 +1,18 @@
 # Core LLM stack
 torch>=2.2
-transformers>=4.40
+# Pin transformers to 4.x: AirLLM 2.11's Qwen2 attention layer-streaming is
+# incompatible with the 5.x position_embeddings / 3D-hidden_states API.
+transformers>=4.46,<5.0
 accelerate>=0.30
 sentencepiece
 huggingface_hub>=0.23
 
 # AirLLM (layer-streaming inference for out-of-RAM models)
 airllm
-mlx
-mlx-lm
+# mlx and mlx-lm are no longer used: we bypass the macOS MLX gate and run
+# AirLLMQWen2 (PyTorch/CPU) directly to support Qwen2.5 GQA architecture.
+# mlx
+# mlx-lm
 
 # Quantization helpers (used as fallback / baseline loaders)
 bitsandbytes; platform_machine != "arm64"

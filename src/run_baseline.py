@@ -54,12 +54,8 @@ def run(size_key: str, prompt: str, max_new_tokens: int) -> dict:
         thread = threading.Thread(target=model.generate, kwargs=gen_kwargs)
         thread.start()
         for piece in streamer:
-            if not token_times:
-                token_times.append(now_ms() - t0)  # TTFT
-            else:
-                output += piece
-                token_times.append(now_ms() - t0)
-            output_before = piece
+            token_times.append(now_ms() - t0)
+            output += piece
         thread.join()
         rec["peak_rss_mb"] = mt.peak_rss_mb
     rec["output"] = output

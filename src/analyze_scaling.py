@@ -1,24 +1,21 @@
 """Original-extension figure (§5.7): decode latency vs model size (log-log)."""
-import json
-import glob
-
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from src import config
+from src import config, report
 
 
 def _load_sweep():
     """Read AirLLM FP16 runs across sizes for the scaling extension (§5.7)."""
     pts = []
-    for fp in glob.glob(str(config.RESULTS_DIR / "airllm_*_fp16_*.json")):
-        with open(fp) as f:
-            r = json.load(f)
+    for r in report.load_results_md(config.RESULTS_DIR):
+        if r.get("scenario") != "airllm" or r.get("quant") != "fp16":
+            continue
         if not r.get("ok") or r.get("size") not in config.MODELS:
             continue
-        t = r.get("timing", {})
+        t = r.get("timing", {}) or {}
         if t.get("itl_mean_ms"):
             meta = config.MODELS[r["size"]]
             pts.append((r["size"], meta["params_b"], meta["layers"],

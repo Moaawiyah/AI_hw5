@@ -305,6 +305,36 @@ electricity $0.30/kWh, load 40 W, maintenance 2 % CAPEX/yr. API = GPT-4o list pr
 
 ## 7. How to Reproduce
 
+There are two reproducibility levels:
+
+- **Analysis reproduction** regenerates every table, chart, and report from the committed
+  raw Markdown measurements in `results/`. This is cross-platform and was verified on
+  Windows 11 with Python 3.12 on 2026-06-21: **91 tests passed**, and all five analysis
+  commands completed.
+- **Benchmark reproduction** reruns inference and creates new raw measurements. Exact
+  agreement requires the original Apple M3 MacBook Pro with 16 GB unified memory, macOS,
+  the same model revisions, and comparable background load. Windows/Linux or different
+  hardware can validate the pipeline, but their latency, memory, swap, and energy results
+  are not directly comparable to the reported M3 measurements.
+
+### Rebuild the committed results (Windows PowerShell)
+
+```powershell
+uv venv --python 3.12 .venv
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt pytest
+.venv\Scripts\python.exe -m pytest
+.venv\Scripts\python.exe -m src.analyze_perf
+.venv\Scripts\python.exe -m src.analyze_scaling
+.venv\Scripts\python.exe -m src.analyze_roofline
+.venv\Scripts\python.exe -m src.plot_economics
+.venv\Scripts\python.exe -m src.generate_report
+```
+
+Expected test result: `91 passed`. Generated artifacts are written to `figures/`,
+`results/summary.md`, and `reports/REPORT.md`.
+
+### Rerun the hardware benchmarks (macOS/Linux shell)
+
 ```bash
 # 1. Environment (Python 3.12 — the brief warns against the newest Python)
 uv venv --python 3.12 .venv && source .venv/bin/activate
@@ -316,7 +346,9 @@ cp .env.example .env  # then edit .env
 
 # 3. Download models (Qwen2.5-14B for all paths)
 python -m src.hf_utils 14B
-ollama pull qwen2.5:14b qwen2.5:14b-instruct-q2_K qwen2.5:14b-instruct-q8_0
+ollama pull qwen2.5:14b
+ollama pull qwen2.5:14b-instruct-q2_K
+ollama pull qwen2.5:14b-instruct-q8_0
 
 # 4. Run experiments (each persists Markdown to results/)
 python -m src.bench_driver baseline --size 14B --repeats 1   # expected OOM

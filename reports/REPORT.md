@@ -1,14 +1,14 @@
-# EX05 â€” Technical Report (data-driven)
+# EX05 — Technical Report (data-driven)
 
 Subject model: **Qwen/Qwen2.5-14B-Instruct**  
 Hardware: Apple M3 MacBook Pro, 16 GB unified memory.  
 Generated from `results/` Markdown result files.
 
-## 1. Headline comparison (Â§5.4)
+## 1. Headline comparison (§5.4)
 
 | Path | Peak RAM (MB) | Throughput (tok/s) | Outcome |
 |---|---:|---:|---|
-| Baseline (FP16) | â€” | â€” | OOM / swap thrash |
+| Baseline (FP16) | â€” | — | OOM / swap thrash |
 | AirLLM (FP16) | 4711 | 0.08 | ran, memory-bound |
 | Ollama GGUF (Q4) | 76 | 10.13 | ran, comfortable |
 
@@ -24,7 +24,7 @@ Generated from `results/` Markdown result files.
 | ollama | 14b | q4 | true | 8828.25 | 100.84 | 10.13 | 75.75 | 13576.96 | 0.15 |
 | ollama | 14b | q8 | true | 86119.72 | 17111.69 | 0.06 | 18.08 | 890634.49 | 9.90 |
 
-## 3. Economics â€” On-Prem vs API (Â§5.5)
+## 3. Economics — On-Prem vs API (§5.5)
 
 | Path | Latency/req | Break-even vs GPT-4o |
 |---|---:|---:|
@@ -41,4 +41,4 @@ Generated from `results/` Markdown result files.
 
 ## 5. Reproduction
 
-See `../README.md` Â§7 for full instructions. Raw per-run data is in `results/`.
+See `../README.md` §7 for full instructions. Raw per-run data is in `results/`.

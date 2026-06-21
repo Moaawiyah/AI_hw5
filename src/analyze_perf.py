@@ -31,7 +31,16 @@ def load_results() -> pd.DataFrame:
             "estimated_kwh": r.get("estimated_kwh"),
             "error": (r.get("error") or "")[:40],
         })
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        # Failed runs use an em dash in Markdown for unavailable measurements.
+        # Normalize placeholders to NaN so aggregation works across pandas versions.
+        numeric = [
+            "ttft_ms", "itl_mean_ms", "throughput_tps", "peak_rss_mb",
+            "wall_ms", "estimated_kwh",
+        ]
+        df[numeric] = df[numeric].apply(pd.to_numeric, errors="coerce")
+    return df
 
 
 def _save(fig, name):

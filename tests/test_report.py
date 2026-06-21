@@ -70,6 +70,10 @@ class TestFormatAndParse:
         out = format_summary_md([SAMPLE_REC])
         assert "airllm" in out and "14B" in out and "|" in out
 
+    def test_format_summary_renders_nan_as_unavailable(self):
+        out = format_summary_md([{"scenario": "baseline", "ttft_ms": float("nan")}])
+        assert "nan" not in out.lower()
+
     def test_parse_coerce_types(self):
         parsed = parse_record_md(format_record_md(SAMPLE_REC))
         assert isinstance(parsed["ok"], bool)

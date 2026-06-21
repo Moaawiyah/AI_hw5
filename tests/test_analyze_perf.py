@@ -59,6 +59,17 @@ class TestLoadResults:
                 mc.SUBJECT = "14B"
                 assert load_results().empty
 
+    def test_normalizes_unavailable_numeric_values(self):
+        failed = {
+            "scenario": "baseline", "size": "14B", "quant": "fp16",
+            "ok": False, "wall_ms": 1000.0, "peak_rss_mb": "—",
+            "estimated_kwh": "—", "timing": {"ttft_ms": "—"},
+        }
+        with patch("src.analyze_perf.report.load_results_md", return_value=[failed]):
+            df = load_results()
+        assert pd.isna(df.iloc[0]["peak_rss_mb"])
+        assert pd.isna(df.iloc[0]["ttft_ms"])
+
 
 class TestWriteTable:
     def test_write_calls_report(self):

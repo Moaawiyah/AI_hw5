@@ -4,6 +4,7 @@ Result files in results/ are pure Markdown tables (one per run) — they render
 nicely on GitHub and ``parse_record_md`` reads them back so analyze_*.py can
 aggregate. The aggregated table is also Markdown.
 """
+import math
 import re
 from pathlib import Path
 
@@ -12,7 +13,7 @@ _ROW_RE = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|$")
 
 
 def _fmt(v, nd=2):
-    if v is None:
+    if v is None or (isinstance(v, float) and math.isnan(v)):
         return "—"
     if isinstance(v, bool):
         return "true" if v else "false"

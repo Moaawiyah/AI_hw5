@@ -6,7 +6,7 @@ techniques — **AirLLM** (layer-streaming / OS-paging analogy) and **GGUF quant
 then benchmarking, drawing a **Roofline**, and performing a full **On-Prem vs API
 economics** analysis with a break-even point.
 
-> Author: _<your name>_ · Course: L08, Assignment 05 (Dr. Yoram Segal) · Tooling: `uv`, Python 3.12
+> Author: _<Moaa'wiayan_haj& Mohammd_Selawe>_ · Course: AI_Orchastraion , Assignment 05 (Dr. Yoram Segal) · Tooling: `uv`, Python 3.12
 
 ---
 
@@ -115,10 +115,12 @@ The trade-off is speed:
 - **ITL 13.02 s/token** (Decode — every token re-streams all 48 layers from SSD).
 - **0.08 tok/s**, ~10.6 minutes for 48 tokens.
 
-**Why so slow:** every generated token forces AirLLM to re-load all 48 layer shards from
-the NVMe SSD, use them once, then evict them. This is exactly **OS demand-paging** — layers
-are pages, the SSD is the backing store, `mmap` is the page-fault handler. The 13.02 s/token
-Decode proves the system is **memory-bandwidth-bound**, not compute-bound.
+**Why so slow:** AirLLM is run with `use_cache=False`, which disables the KV-cache between
+decode steps. Every generated token must re-run all 48 transformer layers from the NVMe SSD
+with no residual state in RAM — layers are loaded, used once, then evicted. This is exactly
+**OS demand-paging**: layers are pages, the SSD is the backing store, `mmap` is the
+page-fault handler. The 13.02 s/token Decode proves the system is
+**memory-bandwidth-bound**, not compute-bound.
 
 **Why it fit when Stage 1 didn't:** baseline holds all layers resident; AirLLM holds
 **one layer (~580 MB) at a time**. The other 47 live on disk until needed.
@@ -165,33 +167,41 @@ near-interactive latency.
 
 ### Stage 5 — GGUF Q8_0: the cliff
 
-8 bits/parameter only halves FP16 (28 GB → 15 GB). With the KV-cache for a 2048-token
-context added on top, total footprint exceeds the 16 GB unified pool. macOS starts
-swapping pages to SSD on every forward pass — **exactly the same failure mode as Stage 1,
-just deferred** by quantization. We killed it after a 12-minute timeout; **0 tokens
-generated.**
+8 bits/parameter only halves FP16 (28 GB → 15 GB). That fits the 16 GB unified pool
+*without* the KV-cache, but the 2048-token context window pushes the total footprint past
+the hardware limit. macOS starts swapping layer weights to NVMe on every forward pass —
+exactly the same bottleneck as Stage 1, deferred by quantization.
+
+The run **completed** all 48 tokens, but required **14.8 minutes**: TTFT = 86.1 s
+(swap-bound prefill), ITL = **17.1 s/token** (swap-bound decode), throughput = 0.06 tok/s.
+Q4's in-RAM ITL is 101 ms — Q8's swap-bound ITL is 17 100 ms, a **170× latency penalty**
+for 6 GB of extra precision. Q8 is actually slower than AirLLM (13 s/token) despite being
+only 15 GB on disk instead of 28 GB, because Ollama does not implement the layer-streaming
+discipline that keeps AirLLM's RAM footprint bounded.
 
 **The lesson:** quantization pushes the memory wall outward but does not remove it. This
 is the **"red line"** of accuracy — going past Q4 in pursuit of fidelity re-introduces
-the baseline's bottleneck.
+the baseline's bottleneck, in the form of catastrophic swap-thrash rather than a hard OOM.
 
 ### Pattern across all five stages
 
 1. **TTFT scales with how much weight data must be paged in before the first token** —
-   Q2 (5.8 GB) = 2.5 s; Q4 (9.0 GB) = 8.5 s; AirLLM (48 layers streamed once during
-   prefill) = 14.2 s; Q8 (15 GB, swap-thrashing) = ∞.
+   Q2 (5.8 GB) = 5.9 s; Q4 (9.0 GB) = 8.8 s; AirLLM (48 layers streamed once during
+   prefill) = 13.4 s; Q8 (15 GB, swap-thrashing) = 86.1 s.
 2. **ITL is dominated by memory bandwidth during Decode** — Q2/Q4 stay around 80–100 ms
-   because the model fits in RAM and only weights are re-read; AirLLM is 12 856 ms
-   because every layer must be re-faulted from SSD each token. Two orders of magnitude
+   because the model fits in RAM and only weights are re-read; AirLLM is 13 021 ms
+   because every layer must be re-faulted from SSD each token; Q8 is 17 112 ms because
+   every layer must be swapped in from SSD via the OS pager. Two–three orders of magnitude
    apart — the signature of memory-boundedness.
 3. **The unified-memory wall is hit three different ways:** Stage 1 (instant OOM at
    28 GB FP16), Stage 5 (deferred swap-thrash at 15 GB Q8), Stage 2 (avoided entirely via
    paging, paid in latency). Stages 3 and 4 are the only paths that fit comfortably.
 
-> **Caveat on Ollama RSS** (233 / 259 MB): that's the **client** process. The model runs
-> in the separate `ollama serve` daemon, whose RSS isn't visible to the runner. The fair
-> comparison vs AirLLM is on **disk size** (5.8 / 9.0 / 15 GB) and on the fact that Q2/Q4
-> stay responsive while Q8 doesn't.
+> **Caveat on Ollama RSS** (259 / 76 / 18 MB for Q2/Q4/Q8): those are the **client** process
+> figures. The model actually runs in the separate `ollama serve` daemon, whose RSS isn't
+> visible to the Python runner. The fair comparison vs AirLLM is on **disk size**
+> (5.8 / 9.0 / 15 GB) and on whether the model fits in the 16 GB unified pool
+> (Q2/Q4 yes → fast; Q8 no → swap-thrash at 17 s/token).
 
 ---
 
@@ -320,6 +330,11 @@ python -m src.analyze_roofline    # roofline.png
 python -m src.plot_economics      # breakeven.png
 python -m src.generate_report     # reports/REPORT.md
 ```
+
+**Measurement note:** all results in this report are single-run measurements (`--repeats 1`).
+The AirLLM 14B run takes ~10 minutes per repeat on this hardware, making multiple repeats
+impractical for a course submission. For a production benchmark, run `--repeats 3` and
+report mean ± std; on the Ollama Q4 path (~15 s/repeat) three repeats add under a minute.
 
 **Repository structure** (§9): every Python file is **≤ 150 lines of code**.
 

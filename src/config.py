@@ -36,7 +36,7 @@ PROMPT = (
 )
 MAX_NEW_TOKENS = 48
 MAX_SEQ_LEN = 2048        # KV-cache cap for AirLLM and Ollama (prevents swap on 16 GB)
-REPEATS = 2
+REPEATS = 1          # single run per scenario; see README §7 for variance note
 
 # --- Economics assumptions (state ALL explicitly in report; §5.5) ---
 # API pricing (USD per 1M tokens), public list prices as of mid-2026.

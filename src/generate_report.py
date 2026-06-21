@@ -29,8 +29,8 @@ def _headline(recs):
             if all(str(r.get(k, "")).lower() == str(v).lower() for k, v in filt.items()):
                 return r
         return None
-    base = pick("baseline")
-    air = pick("airllm", quant="fp16")
+    base = pick("baseline", size=config.SUBJECT)
+    air = pick("airllm", quant="fp16", size=config.SUBJECT)
     ol = pick("ollama", quant="q4")
     rows = []
     if base:

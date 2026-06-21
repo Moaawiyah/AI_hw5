@@ -9,7 +9,7 @@ Generated from `results/` Markdown result files.
 | Path | Peak RAM (MB) | Throughput (tok/s) | Outcome |
 |---|---:|---:|---|
 | Baseline (FP16) | — | — | OOM / swap thrash |
-| AirLLM (FP16) | 1431 | 0.52 | ran, memory-bound |
+| AirLLM (FP16) | 4711 | 0.08 | ran, memory-bound |
 | Ollama GGUF (Q4) | 76 | 10.13 | ran, comfortable |
 
 ## 2. Aggregated results

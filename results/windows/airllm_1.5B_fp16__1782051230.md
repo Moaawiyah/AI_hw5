@@ -1,4 +1,4 @@
-# Airllm â€” 1.5B (fp16)
+# Airllm — 1.5B (fp16)
 
 **Status:** success
 
@@ -11,20 +11,20 @@
 | quant | fp16 |
 | model |  |
 | ok | true |
-| wall_ms | 120569.93 |
-| load_ms | 1175.87 |
-| peak_rss_mb | 1700.45 |
-| estimated_kwh | 0.00134 |
+| wall_ms | 395064.76 |
+| load_ms | 20045.43 |
+| peak_rss_mb | 2809.10 |
+| estimated_kwh | 0.00494 |
 | repeat | 0 |
 
 ## Timing
 
 | Field | Value |
 |---|---:|
-| ttft_ms | 4269.70 |
-| itl_mean_ms | 2421.88 |
-| itl_p50_ms | 2472.42 |
-| throughput_tps | 0.42 |
+| ttft_ms | 27508.81 |
+| itl_mean_ms | 7656.57 |
+| itl_p50_ms | 7860.88 |
+| throughput_tps | 0.13 |
 | n_tokens | 49 |
 
 ## Tokens

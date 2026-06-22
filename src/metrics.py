@@ -63,7 +63,7 @@ def now_ms() -> float:
 
 def estimate_power_kwh(wall_ms: float, load_w: float) -> float:
     """Energy consumed (kWh) = wattage × hours."""
-    return load_w * (wall_ms / 1000.0) / 3600.0
+    return load_w * (wall_ms / 1000.0) / 3600.0 / 1000.0
 
 
 def summarize_token_times(t_ms: list) -> dict:

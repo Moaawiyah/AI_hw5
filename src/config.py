@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MODELS_CACHE = ROOT / "models_cache"
 SHARDS_DIR = ROOT / "models_cache" / "airllm_shards"
-RESULTS_DIR = ROOT / "results"
+RESULTS_DIR = Path(os.environ.get("BENCH_RESULTS_DIR", ROOT / "results"))
 FIGURES_DIR = ROOT / "figures"
 
 for _d in (MODELS_CACHE, SHARDS_DIR, RESULTS_DIR, FIGURES_DIR):
@@ -49,7 +49,7 @@ HW_CAPEX_USD = 1999.0
 HW_LIFETIME_YEARS = 4
 ELECTRICITY_KWH_USD = 0.30
 HW_IDLE_W = 7
-HW_LOAD_W = 40
+HW_LOAD_W = float(os.environ.get("BENCH_LOAD_W", 40))
 HW_RAM_MB = 16 * 1024          # 16 GB unified memory (CPU + GPU share one pool)
 BASELINE_OOM_MB = 20_000.0     # observed MPS peak when baseline OOM'd (~20 GB)
 HW_DESCRIPTION = "Apple M3 MacBook Pro, 16 GB unified memory"

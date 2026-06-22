@@ -115,7 +115,7 @@ def write_table(df: pd.DataFrame):
         ok=("ok", "first"), ttft_ms=("ttft_ms", "mean"),
         itl_mean_ms=("itl_mean_ms", "mean"), throughput_tps=("throughput_tps", "mean"),
         peak_rss_mb=("peak_rss_mb", "mean"), wall_ms=("wall_ms", "mean"),
-        estimated_kwh=("estimated_kwh", "mean")).round(4).reset_index()
+        estimated_kwh=("estimated_kwh", "mean")).round(5).reset_index()
     rows = agg.to_dict(orient="records")
     report.write_summary(rows, config.RESULTS_DIR / "summary.md")
     print(f"[table] {config.RESULTS_DIR / 'summary.md'}")

@@ -5,6 +5,7 @@ nicely on GitHub and ``parse_record_md`` reads them back so analyze_*.py can
 aggregate. The aggregated table is also Markdown.
 """
 import math
+import numbers
 import re
 from pathlib import Path
 
@@ -13,11 +14,14 @@ _ROW_RE = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|$")
 
 
 def _fmt(v, nd=2):
-    if v is None or (isinstance(v, float) and math.isnan(v)):
+    if v is None or (isinstance(v, numbers.Real) and not isinstance(v, numbers.Integral)
+                     and math.isnan(v)):
         return "—"
     if isinstance(v, bool):
         return "true" if v else "false"
-    if isinstance(v, float):
+    if isinstance(v, numbers.Real) and not isinstance(v, numbers.Integral):
+        if v != 0 and abs(v) < 0.01:
+            return f"{v:.5f}"
         return f"{v:.{nd}f}"
     return str(v)
 

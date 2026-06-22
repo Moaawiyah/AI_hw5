@@ -72,13 +72,13 @@ tokens, 48 max new tokens). The contrast across stages tells the whole story in 
 
 | Stage | Disk | Peak RAM | TTFT | ITL | Throughput | Est. kWh | Outcome |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Baseline FP16 | 28 GB | — | — | — | 0 tok/s | 1.03¹ | **OOM** |
-| AirLLM FP16 | 28 GB | 4 711 MB | 13.4 s | 13.0 s/tok | 0.08 tok/s | **7.09** | runs (slowly) |
-| GGUF Q2_K | 5.8 GB | 259 MB | 5.9 s | 82 ms | 12.4 tok/s | 0.11 | runs, fast |
-| GGUF Q4_K_M | 9.0 GB | 76 MB | 8.8 s | 101 ms | 10.1 tok/s | 0.15 | sweet spot |
-| GGUF Q8_0 | 15 GB | 18 MB | 86.1 s | 17.1 s/tok | 0.06 tok/s | 9.90 | **swap-thrash** |
+| Baseline FP16 | 28 GB | — | — | — | 0 tok/s | 0.00103¹ | **OOM** |
+| AirLLM FP16 | 28 GB | 4 711 MB | 13.4 s | 13.0 s/tok | 0.08 tok/s | **0.00709** | runs (slowly) |
+| GGUF Q2_K | 5.8 GB | 259 MB | 5.9 s | 82 ms | 12.4 tok/s | 0.00011 | runs, fast |
+| GGUF Q4_K_M | 9.0 GB | 76 MB | 8.8 s | 101 ms | 10.1 tok/s | 0.00015 | sweet spot |
+| GGUF Q8_0 | 15 GB | 18 MB | 86.1 s | 17.1 s/tok | 0.06 tok/s | 0.00990 | **swap-thrash** |
 
-> ¹ Baseline consumed 1.03 kWh during the 93 s load phase before crashing with OOM — no tokens were generated.
+> ¹ Baseline was estimated at 0.00103 kWh during the 93 s load phase before crashing with OOM — no tokens were generated.
 
 ![Path comparison](figures/path_comparison.png)
 
@@ -205,6 +205,164 @@ the baseline's bottleneck, in the form of catastrophic swap-thrash rather than a
 
 ---
 
+## 3A. Complete Windows PC reproduction (2026-06-21)
+
+The complete experiment was rerun independently on the Windows laptop below. These results
+are kept separate from the Apple M3 measurements because the memory architecture, GPU,
+storage, operating system, and inference backends differ.
+
+### Windows hardware and software
+
+| Component | Specification |
+|---|---|
+| Machine | ASUS TUF Gaming F15 (`FX507VV4`) |
+| CPU | Intel Core i7-13700H — 14 cores / 20 logical processors |
+| System memory | **23.6 GB RAM** |
+| GPU | NVIDIA GeForce RTX 4060 Laptop GPU — **8 GB VRAM** |
+| GPU power limit | 80 W default, 140 W maximum |
+| Storage | Micron 2400 1 TB NVMe + SK hynix BC511 512 GB NVMe |
+| OS | Windows 11 Home, build 26200 |
+| Software | Python 3.12.9, PyTorch 2.12.1+cu130, CUDA 13.0, Ollama 0.30.10 |
+| LLM stack | transformers 4.46.3, AirLLM 2.11.0 |
+
+The same Qwen2.5 family, 16-token prompt, 48-token output cap, temperature 0, and
+2048-token context were used. AirLLM runs are single measurements because the 14B run
+took 44.5 minutes. Ollama uses one cold-load run followed by two warm measured runs.
+
+### Windows headline results
+
+| Stage | Residency / peak RSS | TTFT | ITL | Throughput | Wall time | Outcome |
+|---|---:|---:|---:|---:|---:|---|
+| Baseline 14B FP16 (CUDA) | 8 GB VRAM limit | — | — | 0 tok/s | 32.18 s | **CUDA OOM** |
+| AirLLM 14B FP16 (CPU/NVMe) | 7 084 MB RSS | 123.07 s | 53.01 s/tok | 0.02 tok/s | 44.46 min | runs |
+| Ollama 14B Q2_K | 100% GPU | 5.07 s¹ | 32.94 ms/tok¹ | **31.00 tok/s¹** | 6.64 s¹ | runs |
+| Ollama 14B Q4_K_M | 34% CPU / 66% GPU | 5.24 s¹ | 111.88 ms/tok¹ | **9.14 tok/s¹** | 10.52 s¹ | runs |
+| Ollama 14B Q8_0 | 62% CPU / 38% GPU | 5.59 s¹ | 378.88 ms/tok¹ | **2.70 tok/s¹** | 23.43 s¹ | runs |
+
+> ¹ Mean of warm repeats 1 and 2. Cold TTFT was 33.85 s (Q2), 23.28 s (Q4), and
+> 40.67 s (Q8) because it includes loading and CPU/GPU placement.
+
+![Windows path comparison](figures/windows_path_comparison.png)
+
+### Stage 1 — direct FP16 CUDA baseline: the 8 GB wall
+
+The cross-platform baseline attempted to place the same 28 GB FP16 checkpoint directly on
+CUDA. It loaded four of eight checkpoint shards, then failed on shard five after 32.18 s:
+
+```text
+AcceleratorError: CUDA error: out of memory
+```
+
+This is a cleaner capacity failure than the unified-memory Mac result: the discrete RTX
+4060 has a hard 8 GB VRAM pool, while the weights alone need about 28 GB. No token was
+generated. The baseline runner now selects CUDA on Windows/Linux, MPS on macOS, and CPU
+only when no accelerator exists.
+
+### Stage 2 — AirLLM FP16: runnable, but storage/CPU bound
+
+AirLLM split the 14B checkpoint into 48 transformer-layer shards totaling 27.5 GB and
+streamed them from NVMe through CPU memory. It generated all 48 requested tokens while
+holding peak Python RSS to **7.08 GB**, well below the 28 GB weight size:
+
+> “Virtual memory paging allows an operating system to use a combination of RAM and disk
+> space to manage memory, breaking down processes' memory into fixed-size blocks called
+> pages. When a page is not in RAM, the OS swaps it with another page on…”
+
+The cost was severe: 123.07 s to first token, 53.01 s per decode token, and 44.46 minutes
+total. `use_cache=False` forces every generated token to revisit every layer. The model is
+therefore runnable, but the execution path is dominated by repeated shard loading and CPU
+forward passes rather than RTX 4060 compute.
+
+### Stage 3 — Ollama GGUF quantization
+
+![Windows quantization sweep](figures/windows_quant_sweep.png)
+
+Q2 is the only 14B variant that fits completely in the 8 GB GPU pool. It reaches 31 tok/s,
+about **3.4× Q4** and **11.5× Q8**. Q4 spills 34% of its model allocation to system RAM;
+Q8 spills 62%. Decode latency rises from 32.94 ms to 111.88 ms and then 378.88 ms as the
+GPU-resident fraction falls. On this discrete-GPU PC, quantization controls not only model
+size but also whether each decode step crosses the PCIe CPU/GPU boundary.
+
+All nine Ollama runs passed the repository's on-topic, coherence, and factual-term checks.
+The fixed 48-token cap truncated every answer before its final sentence, so `complete=false`
+for all variants and this short run cannot establish a quality winner.
+
+### Windows AirLLM model-size scaling
+
+| Size | Layers | Peak RSS | TTFT | ITL | Throughput | Wall time |
+|---|---:|---:|---:|---:|---:|---:|
+| **0.5B** | 24 | 2 410 MB | 8.03 s | 4.93 s/tok | 0.21 tok/s | 4.08 min |
+| **1.5B** | 28 | 2 809 MB | 27.51 s | 7.66 s/tok | 0.13 tok/s | 6.58 min |
+| **14B** | 48 | 7 084 MB | 123.07 s | 53.01 s/tok | 0.02 tok/s | 44.46 min |
+
+![Windows AirLLM size scaling](figures/windows_size_scaling.png)
+
+From 0.5B to 14B, peak RSS grows only 2.9× while parameter count grows 28×—the memory
+benefit of layer streaming. Decode ITL grows 10.7× because the larger model has both more
+layers and much wider layers. The 14B AirLLM path is roughly **1 640× slower than Q2** per
+decode token (53 006 ms vs 32.94 ms).
+
+### Windows roofline and bottleneck interpretation
+
+![Windows RTX 4060 roofline](figures/windows_roofline.png)
+
+The illustrative roofline assumes approximately 15 FP16 TFLOP/s and 256 GB/s GDDR6
+bandwidth for this RTX 4060 Laptop configuration, giving a ridge point near 58.6
+FLOP/byte. These are specification-level assumptions, not measured kernel FLOPs. Decode
+remains on the memory-bound side. Q2 improves effective residency by fitting fully in
+VRAM; Q4 and Q8 add PCIe transfers, while AirLLM operates outside the GPU roofline because
+its measured path streams safetensor shards through CPU/NVMe.
+
+### Windows economics scenario
+
+![Windows break-even scenario](figures/windows_breakeven.png)
+
+For comparability with the original economics model, this scenario assumes **$1,500
+replacement CAPEX**, four-year life, 2% annual maintenance, $0.30/kWh, 120 W system load
+for Ollama, and 45 W for CPU AirLLM. It retains the repository's GPT-4o token-price and
+16-input/48-output-token assumptions. These are planning assumptions—not the laptop's
+purchase receipt or measured wall power.
+
+| Windows path | Measured latency/request | Estimated break-even vs API |
+|---|---:|---:|
+| Ollama Q2 | 6.64 s | ~175k requests/month |
+| Ollama Q4 | 10.52 s | ~218k requests/month |
+| Ollama Q8 | 23.43 s | ~1.31M requests/month |
+| AirLLM 14B | 2 667 s | never under these assumptions |
+
+Q2 has the strongest local economics because it both fits in VRAM and finishes quickly.
+AirLLM remains an enablement technique for offline/privacy-constrained inference, not a
+cost-efficient serving path on this machine.
+
+### Windows-specific engineering findings
+
+1. The environment initially contained CPU-only PyTorch. CUDA benchmarking required the
+   `torch 2.12.1+cu130` wheel.
+2. AirLLM imported Apple's `mlx` persister on Windows through the repository patch. The
+   runner now applies that patch only on macOS and uses AirLLM's safetensors persister on
+   Windows/Linux.
+3. `transformers>=4.46,<5` was not strict enough: 4.57 removed the Qwen2 fallback AirLLM
+   needs. The dependency is now pinned to the verified **4.46.3** release.
+4. A generation-thread exception could leave the token streamer waiting indefinitely;
+   the synchronous diagnostic exposed the real version incompatibility.
+5. The energy helper returned watt-hours but labeled them kWh. The formula and stored raw
+   values were corrected by a factor of 1000. Energy remains an estimate, not a wall-meter
+   measurement.
+
+### Windows artifacts and limitations
+
+- Raw records and generated table: [`results/windows/`](results/windows/)
+- Generators: `python -m src.analyze_windows` and
+  `python -m src.analyze_windows_extras`
+- Figures: `windows_path_comparison.png`, `windows_quant_sweep.png`, and
+  `windows_size_scaling.png`, `windows_roofline.png`, and `windows_breakeven.png`
+  under `figures/`
+
+For Ollama, `peak_rss_mb` is the Python client rather than the Ollama server, so the report
+uses Ollama's model residency split instead. Energy figures use assumed path-level power
+(45 W AirLLM CPU, 80 W CUDA baseline, and the legacy 40 W Ollama assumption); they are not
+used for performance conclusions. Exact energy requires an external wall-power meter.
+
 ## 4. Original Extension (§5.7): Model-Size Scaling
 
 We ran the **same AirLLM FP16 layer-streaming path** on three Qwen2.5 sizes — 0.5B, 1.5B,
@@ -219,9 +377,9 @@ and TTFT scale with model size under the SSD-streaming memory technique.
 
 | Size | Params | Layers | TTFT | ITL (ms/tok) | Throughput | Est. kWh |
 |---|---:|---:|---:|---:|---:|---:|
-| **0.5B** | 0.5 B | 24 | 3.7 s | 1 955 ms | 0.52 tok/s | 1.08 |
-| **1.5B** | 1.5 B | 28 | 4.3 s | 2 422 ms | 0.42 tok/s | 1.34 |
-| **14B**  | 14.0 B | 48 | 13.4 s | 13 021 ms | 0.08 tok/s | 7.09 |
+| **0.5B** | 0.5 B | 24 | 3.7 s | 1 955 ms | 0.52 tok/s | 0.00108 |
+| **1.5B** | 1.5 B | 28 | 4.3 s | 2 422 ms | 0.42 tok/s | 0.00134 |
+| **14B**  | 14.0 B | 48 | 13.4 s | 13 021 ms | 0.08 tok/s | 0.00709 |
 
 ![Size scaling](figures/size_scaling.png)
 
@@ -309,7 +467,7 @@ There are two reproducibility levels:
 
 - **Analysis reproduction** regenerates every table, chart, and report from the committed
   raw Markdown measurements in `results/`. This is cross-platform and was verified on
-  Windows 11 with Python 3.12 on 2026-06-21: **91 tests passed**, and all five analysis
+  Windows 11 with Python 3.12 on 2026-06-21: **95 tests passed**, and all analysis
   commands completed.
 - **Benchmark reproduction** reruns inference and creates new raw measurements. Exact
   agreement requires the original Apple M3 MacBook Pro with 16 GB unified memory, macOS,
@@ -330,16 +488,52 @@ uv pip install --python .venv\Scripts\python.exe -r requirements.txt pytest
 .venv\Scripts\python.exe -m src.generate_report
 ```
 
-Expected test result: `91 passed`. Generated artifacts are written to `figures/`,
+Expected test result: `95 passed`. Generated artifacts are written to `figures/`,
 `results/summary.md`, and `reports/REPORT.md`.
+
+### Rerun the complete Windows benchmark
+
+The commands below use a new result directory so committed measurements are not mixed
+with a rerun. Expect roughly 60 GB of additional model/shard storage and about one hour
+for the measured inference runs on the documented laptop, plus model download time.
+
+```powershell
+uv venv --python 3.12 .venv
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt pytest
+uv pip install --python .venv\Scripts\python.exe torch `
+  --index-url https://download.pytorch.org/whl/cu130 --reinstall
+
+$env:BENCH_RESULTS_DIR = "results/windows-rerun"
+$env:WINDOWS_RESULTS_DIR = $env:BENCH_RESULTS_DIR
+
+.venv\Scripts\python.exe -m src.hf_utils 0.5B 1.5B 14B
+ollama pull qwen2.5:14b-instruct-q2_K
+ollama pull qwen2.5:14b
+ollama pull qwen2.5:14b-instruct-q8_0
+
+$env:BENCH_LOAD_W = "80"
+.venv\Scripts\python.exe -m src.bench_driver baseline --size 14B --repeats 1
+
+$env:BENCH_LOAD_W = "45"
+.venv\Scripts\python.exe -m src.bench_driver airllm --size 0.5B --quants fp16 --repeats 1
+.venv\Scripts\python.exe -m src.bench_driver airllm --size 1.5B --quants fp16 --repeats 1
+.venv\Scripts\python.exe -m src.bench_driver airllm --size 14B --quants fp16 --repeats 1
+
+$env:BENCH_LOAD_W = "120"
+.venv\Scripts\python.exe -m src.bench_driver ollama --size 14b --quants q2 q4 q8 --repeats 3
+
+.venv\Scripts\python.exe -m src.analyze_windows
+.venv\Scripts\python.exe -m src.analyze_windows_extras
+.venv\Scripts\python.exe -m pytest
+```
 
 ### Rerun the hardware benchmarks (macOS/Linux shell)
 
 ```bash
 # 1. Environment (Python 3.12 — the brief warns against the newest Python)
 uv venv --python 3.12 .venv && source .venv/bin/activate
-uv pip install -r requirements.txt   # transformers is pinned to 4.x — AirLLM 2.11 is
-                                      # incompatible with the 5.x attention API.
+uv pip install -r requirements.txt   # transformers is pinned to verified 4.46.3;
+                                      # later 4.x versions also break AirLLM's Qwen2 path.
 
 # 2. Set HF token (never hard-code it — §6.2)
 cp .env.example .env  # then edit .env
@@ -400,10 +594,10 @@ each a real finding — all patched in `src/run_airllm.py` or avoided by version
    airlll look for non-existent `.bin` files; resolved by excluding `.bin` from downloads.
 5. **`optimum.bettertransformer` removed** — airlll imports it at module load even though
    it's never called; we inject a no-op stub so airlll imports without downgrading optimum.
-6. **transformers 5.x removed the `position_embeddings=None` fallback** in
-   `Qwen2DecoderLayer.forward` and changed the attention hidden_states layout. AirLLM 2.11
-   was written for the 4.x attention API. We pin `transformers>=4.46,<5.0` in
-   `requirements.txt` rather than maintain a brittle monkey-patch against 5.x.
+6. **Later transformers releases removed the `position_embeddings=None` fallback** in
+   `Qwen2DecoderLayer.forward`. This already fails in 4.57, not only 5.x. AirLLM 2.11
+   works with the older attention API, so `requirements.txt` pins the verified
+   `transformers==4.46.3` release.
 
 (Legacy `_ensure_shard_index()` writes a minimal `model.safetensors.index.json` for
 single-shard Qwen2.5 variants — only relevant if you extend the size sweep below 7B.)

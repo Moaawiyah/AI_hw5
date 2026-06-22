@@ -74,6 +74,10 @@ class TestFormatAndParse:
         out = format_summary_md([{"scenario": "baseline", "ttft_ms": float("nan")}])
         assert "nan" not in out.lower()
 
+    def test_format_summary_preserves_small_energy_values(self):
+        out = format_summary_md([{"scenario": "airllm", "estimated_kwh": 0.00709}])
+        assert "0.00709" in out
+
     def test_parse_coerce_types(self):
         parsed = parse_record_md(format_record_md(SAMPLE_REC))
         assert isinstance(parsed["ok"], bool)

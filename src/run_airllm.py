@@ -78,7 +78,12 @@ def _ensure_shard_index(model_dir):
 
 def _load(size_key: str, quant: str):
     _stub_better_transformer()
-    _patch_mlx_persister()
+    # macOS selects AirLLM's MLX persister even though this runner uses the
+    # PyTorch Qwen path. Windows/Linux already select the safetensors persister
+    # and must not import Apple's unavailable `mlx` package.
+    import sys
+    if sys.platform == "darwin":
+        _patch_mlx_persister()
     _patch_dynamic_cache()
     from airllm.airllm_qwen2 import AirLLMQWen2
     path = str(local_dir(config.MODELS[size_key]["id"]))
@@ -112,15 +117,29 @@ def run(size_key: str, quant: str, prompt: str, max_new_tokens: int) -> dict:
     gen_kwargs = dict(**inputs, max_new_tokens=max_new_tokens, do_sample=False,
                       use_cache=False, streamer=streamer, pad_token_id=tok.eos_token_id)
 
-    token_times, output = [], ""
+    token_times, output, errors = [], "", []
+
+    def _generate():
+        try:
+            model.generate(**gen_kwargs)
+        except Exception as exc:  # propagate worker failures without deadlocking streamer
+            errors.append(exc)
+            streamer.on_finalized_text("", stream_end=True)
+
     with peak_memory() as mt:
-        thread = threading.Thread(target=model.generate, kwargs=gen_kwargs)
+        thread = threading.Thread(target=_generate)
         thread.start()
         for piece in streamer:
             token_times.append(now_ms() - t0)
             output += piece
         thread.join()
         rec["peak_rss_mb"] = mt.peak_rss_mb
+
+    if errors:
+        exc = errors[0]
+        rec["error"] = f"{type(exc).__name__}: {exc}"
+        rec["wall_ms"] = now_ms() - t0
+        return rec
 
     rec["output"] = output
     rec["ok"] = True

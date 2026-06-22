@@ -47,10 +47,10 @@ class TestEstimatePowerKwh:
         assert estimate_power_kwh(0, 40) == 0.0
 
     def test_one_hour(self):
-        assert estimate_power_kwh(3_600_000, 40) == pytest.approx(40.0)
+        assert estimate_power_kwh(3_600_000, 40) == pytest.approx(0.04)
 
     def test_half_hour(self):
-        assert estimate_power_kwh(1_800_000, 100) == pytest.approx(50.0)
+        assert estimate_power_kwh(1_800_000, 100) == pytest.approx(0.05)
 
 
 class TestNowMs:

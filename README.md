@@ -10,7 +10,7 @@ economics** analysis with a break-even point.
 
 ---
 
-## 1. Hardware & Model Justification (§5.1)
+## 1. Hardware & Model Justification 
 
 | Component | Specification |
 |---|---|
@@ -25,7 +25,7 @@ assignment's classic "RAM vs VRAM" split collapses into one 16 GB budget. Every 
 model occupies competes with the OS, the KV-cache, and the framework itself.
 
 **Model chosen — Qwen2.5-14B-Instruct (FP16 ≈ 28 GB).** It is deliberately **~1.75×
-larger than the entire 16 GB unified pool**, so a naive direct load *must* fail (§5.2). It
+larger than the entire 16 GB unified pool**, so a naive direct load *must* fail. It
 is the "big, but not too big" sweet-spot the brief asks for: too big to run directly,
 small enough that AirLLM can still stream it from the SSD.
 
@@ -46,15 +46,14 @@ with identical methodology:
 
 | Path | Tool | Format | Purpose |
 |---|---|---|---|
-| **Baseline** | `transformers` + MPS | FP16 safetensors | Naive direct run — expected to fail (§5.2) |
-| **AirLLM** | `airllm.airllm_qwen2.AirLLMQWen2` (CPU) | FP16 layer shards | Layer-streaming optimization (§5.3) |
-| **Quantized** | Ollama | GGUF (q2/q4/q8) | Quantization sweep (§5.3) |
+| **Baseline** | `transformers` + MPS | FP16 safetensors | Naive direct run — expected to fail  |
+| **AirLLM** | `airllm.airllm_qwen2.AirLLMQWen2` (CPU) | FP16 layer shards | Layer-streaming optimization |
+| **Quantized** | Ollama | GGUF (q2/q4/q8) | Quantization sweep  |
 
 **Metrics captured per run** (`src/metrics.py`): **TTFT** (Time-To-First-Token — Prefill /
 compute-bound), **ITL/TPOT** (Inter-Token-Latency — Decode / memory-bound), **throughput**
 (tok/s), **peak RSS** (sampled in a background thread), wall-time, energy estimate, and
-input/output token counts. Raw numbers are persisted as **Markdown** in `results/` (§6.1 —
-keep all raw numbers).
+input/output token counts. Raw numbers are persisted as **Markdown** in `results/`.
 
 > **Note on quantization.** AirLLM's built-in `compression=4bit/8bit` relies on
 > `bitsandbytes`, which is **CUDA-only**. On Apple Silicon the quantization study is
@@ -205,7 +204,7 @@ the baseline's bottleneck, in the form of catastrophic swap-thrash rather than a
 
 ---
 
-## 4. Original Extension (§5.7): Model-Size Scaling
+## 4. Original Extension : Model-Size Scaling
 
 We ran the **same AirLLM FP16 layer-streaming path** on three Qwen2.5 sizes — 0.5B, 1.5B,
 and 14B — on the same prompt (16 input tokens, 48 new tokens) to measure how decode latency
@@ -261,7 +260,7 @@ model size per se.
 
 ---
 
-## 5. Linking Results to Lecture Concepts (§5.6)
+## 5. Linking Results to Lecture Concepts 
 
 - **VRAM** — On this machine VRAM *is* the 16 GB unified pool; there is no separate GPU
   memory. The OOM at ~20 GB is the unified-memory wall.
@@ -276,7 +275,7 @@ model size per se.
 
 ---
 
-## 6. Economics: On-Prem vs API (§5.5)
+## 6. Economics: On-Prem vs API 
 
 ![Break-even](figures/breakeven.png)
 
@@ -298,7 +297,7 @@ electricity $0.30/kWh, load 40 W, maintenance 2 % CAPEX/yr. API = GPT-4o list pr
   *otherwise unrunnable* model when no API exists (privacy/offline/closed-data scenarios),
   not saving money.
 - **Privacy/security:** on-prem (either path) wins whenever data cannot leave the machine —
-  regardless of cost. Prompt-caching (PageAttention-style, §5.5) shifts the API curve down
+  regardless of cost. Prompt-caching (PageAttention-style,  shifts the API curve down
   and pushes the break-even further out.
 
 ---
@@ -341,7 +340,7 @@ uv venv --python 3.12 .venv && source .venv/bin/activate
 uv pip install -r requirements.txt   # transformers is pinned to 4.x — AirLLM 2.11 is
                                       # incompatible with the 5.x attention API.
 
-# 2. Set HF token (never hard-code it — §6.2)
+# 2. Set HF token (never hard-code it — 
 cp .env.example .env  # then edit .env
 
 # 3. Download models (Qwen2.5-14B for all paths)
@@ -368,7 +367,7 @@ The AirLLM 14B run takes ~10 minutes per repeat on this hardware, making multipl
 impractical for a course submission. For a production benchmark, run `--repeats 3` and
 report mean ± std; on the Ollama Q4 path (~15 s/repeat) three repeats add under a minute.
 
-**Repository structure** (§9): every Python file is **≤ 150 lines of code**.
+**Repository structure** : every Python file is **≤ 150 lines of code**.
 
 ```
 src/        config, hf_utils, token_count, metrics, report,
@@ -395,7 +394,7 @@ each a real finding — all patched in `src/run_airllm.py` or avoided by version
 2. **GQA reshape failure on the MLX path** — airlll's MLX backend assumes MHA. Resolved
    by bypassing `AutoModel` and importing `AirLLMQWen2` directly (PyTorch/CPU path).
 3. **Cross-model shard pollution** — a shared shard dir collided between models; fixed with
-   per-model `layer_shards_saving_path` (§6.1).
+   per-model `layer_shards_saving_path` .
 4. **Phantom `.bin` shard index** — the downloaded `pytorch_model.bin.index.json` made
    airlll look for non-existent `.bin` files; resolved by excluding `.bin` from downloads.
 5. **`optimum.bettertransformer` removed** — airlll imports it at module load even though
